@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module Data.MonadicStreamFunction.Util where
 
 -- External
@@ -127,8 +128,13 @@ sf1 >>>^ sf2 = sf1 >>> liftMSFBase sf2
 
 -- See also: 'iPre'
 
+-- | Discard the first input and output @b@.
 iPost :: Monad m => b -> MSF m a b -> MSF m a b
 iPost b sf = MSF $ \_ -> return (b, sf)
+
+-- | As |iPost|, but effectful.
+iPostM :: Monad m => m b -> MSF m a b -> MSF m a b
+iPostM mb sf = MSF $ \_ -> ( , sf) <$> mb
 
 next :: Monad m => b -> MSF m a b -> MSF m a b
 next b sf = MSF $ \a -> do

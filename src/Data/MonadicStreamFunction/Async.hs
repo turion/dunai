@@ -65,3 +65,10 @@ concatS msf = MSF $ \_ -> tick msf []
     tick msf []     = do
       (bs, msf') <- unMSF msf ()
       tick msf' bs
+
+
+-- | The fundamental constructor of asynchronous 'MSF's.
+prepend :: Monad m => (a -> m b) -> MSF m a b -> MSF m a b
+prepend f msf = MSF $ \a -> do
+  b <- f a
+  return (b, msf)
