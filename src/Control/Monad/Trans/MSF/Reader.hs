@@ -1,17 +1,42 @@
-{-# LANGUAGE Rank2Types          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Control.Monad.Trans.MSF.Reader
   ( module Control.Monad.Trans.MSF.Reader
   , module Control.Monad.Trans.Reader
   ) where
 
 -- External
+-- transformers
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
   hiding (liftCallCC, liftCatch) -- Avoid conflicting exports
 
+-- arrows
+import Control.Arrow.Operations
+
+-- mtl
+--import Control.Monad.Reader
+
+-- base
+import Data.Tuple (swap)
 
 -- Internal
 import Control.Monad.Trans.MSF.GenLift
 import Data.MonadicStreamFunction
+
+{-
+instance (MonadReader m) => ArrowReader r (MSF m) where
+  readState = arrM_ ask
+  newReader msf = liftMSFTrans $ arr swap >>> runReaderS msf
+-}
+-- instance (Monad m, ArrowReader r (MSF m), MonadTrans t) => ArrowReader r (MSF (t m)) where
+instance (Monad m, ArrowReader r a, a ~ (MSF m), MonadTrans t) => ArrowReader r (MSF (t m)) where
+  readState = liftMSFTrans $ readState
+  newReader = liftMSFTrans . newReader
+
 
 
 -- * Reader monad
