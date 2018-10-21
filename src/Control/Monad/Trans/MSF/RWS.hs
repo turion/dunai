@@ -23,7 +23,7 @@ import Data.MonadicStreamFunction
 -- * 'RWS' (Reader-Writer-State) monad
 
 -- | Run the 'RWST' layer by making the state variables explicit.
-runRWSS :: (Functor m, Monad m, Monoid w)
+runRWSS :: (Monad m, Monoid w)
         => MSF (RWST r w s m) a b
         -> MSF m (r, s, a) (w, s, b)
 runRWSS = transS transformInput transformOutput
@@ -33,7 +33,7 @@ runRWSS = transS transformInput transformOutput
     sym ((b, msf'), s, w) = ((w, s, b), msf')
 
 -- | Wrap an 'MSF' with explicit state variables in 'RWST' monad.
-rwsS :: (Functor m, Monad m, Monoid w)
+rwsS :: (Monad m, Monoid w)
      => MSF m (r, s, a) (w, s, b)
      -> MSF (RWST r w s m) a b
 rwsS = lifterS wrapRWST

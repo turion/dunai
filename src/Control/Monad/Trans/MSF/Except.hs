@@ -70,7 +70,7 @@ pass = Category.id
 
 -- | Converts an 'MSF' in 'MaybeT' to an 'MSF' in 'ExceptT'.
 --   Whenever 'Nothing' is thrown, throw @()@ instead.
-maybeToExceptS :: (Functor m, Monad m)
+maybeToExceptS :: Monad m
                => MSF (MaybeT m) a b -> MSF (ExceptT () m) a b
 maybeToExceptS = liftMSFPurer (ExceptT . (maybe (Left ()) Right <$>) . runMaybeT)
 

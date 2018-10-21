@@ -87,7 +87,7 @@ transS transformInput transformOutput msf = MSF $ \a2 -> do
 -- polymorphic lifting function @forall a . m a -> m1 a@, this auxiliary
 -- function needs to be a bit more structured, although less structured than
 -- 'lifterS'.
-transG1 :: (Monad m1, Functor m2, Monad m2)
+transG1 :: (Monad m1, Monad m2)
         => (a2 -> m1 a1)
         -> (forall c. a2 -> m1 (b1, c) -> m2 (b2, c))
         -> MSF m1 a1 b1 -> MSF m2 a2 b2

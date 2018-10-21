@@ -61,7 +61,7 @@ writerS' :: (Monad m, Monoid s) => MSF m a (s, b) -> MSF (WriterT s m) a b
 writerS' = lifterS wrapMSFWriterT
 
 -- | Alternative implementation of 'runWriterS' using 'lifterS'.
-runWriterS' :: (Monoid s, Functor m, Monad m) => MSF (WriterT s m) a b -> MSF m a (s, b)
+runWriterS' :: (Monoid s, Monad m) => MSF (WriterT s m) a b -> MSF m a (s, b)
 runWriterS' = lifterS unwrapMSFWriterT
 
 -- ** Alternative implementation using 'transS'
@@ -77,7 +77,7 @@ writerS'' = transS transformInput transformOutput
         return (b, msf')
 
 -- | Alternative implementation of 'runWriterS' using 'transS'.
-runWriterS'' :: (Monoid s, Functor m, Monad m) => MSF (WriterT s m) a b -> MSF m a (s, b)
+runWriterS'' :: (Monoid s, Monad m) => MSF (WriterT s m) a b -> MSF m a (s, b)
 runWriterS'' = transS transformInput transformOutput
   where
     transformInput              = return

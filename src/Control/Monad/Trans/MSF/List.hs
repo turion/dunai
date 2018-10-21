@@ -13,7 +13,7 @@ import Data.MonadicStreamFunction
 -- * List monad
 
 -- Name alternative (in the article): collect
-widthFirst :: (Functor m, Monad m) => MSF (ListT m) a b -> MSF m a [b]
+widthFirst :: Monad m => MSF (ListT m) a b -> MSF m a [b]
 widthFirst msf = widthFirst' [msf] where
     widthFirst' msfs = MSF $ \a -> do
         (bs, msfs') <- unzip . concat <$> mapM (runListT . flip unMSF a) msfs

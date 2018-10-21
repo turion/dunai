@@ -93,7 +93,7 @@ runStateS__ msf s = MSF $ \a -> do
 -- ** Alternative using 'lifterS'.
 
 -- | Alternative implementation of 'stateS' using 'lifterS'.
-stateS' :: (Functor m, Monad m) => MSF m (s, a) (s, b) -> MSF (StateT s m) a b
+stateS' :: Monad m => MSF m (s, a) (s, b) -> MSF (StateT s m) a b
 stateS' = lifterS (\g i -> StateT ((resort <$>) . g . flip (,) i))
  where resort ((s, b), ct) = ((b, ct), s)
 
@@ -103,14 +103,14 @@ stateS' = lifterS (\g i -> StateT ((resort <$>) . g . flip (,) i))
 --   return ((b, msf'), s')
 
 -- | Alternative implementation of 'runStateS' using 'lifterS'.
-runStateS' :: (Functor m, Monad m) => MSF (StateT s m) a b -> MSF m (s, a) (s, b)
+runStateS' :: Monad m => MSF (StateT s m) a b -> MSF m (s, a) (s, b)
 runStateS' = lifterS (\g i -> resort <$> uncurry (flip runStateT) (second g i))
  where resort ((b, msf), s) = ((s, b), msf)
 
 -- ** Alternative using 'transS'.
 
 -- | Alternative implementation of 'runStateS' using 'transS'.
-runStateS'' :: (Functor m, Monad m) => MSF (StateT s m) a b -> MSF m (s, a) (s, b)
+runStateS'' :: Monad m => MSF (StateT s m) a b -> MSF m (s, a) (s, b)
 runStateS'' = transS transformInput transformOutput
   where
     transformInput  (_, a)           = return a
@@ -129,7 +129,7 @@ stateS'' = transS transformInput transformOutput
 -- ** Alternative using 'transG'.
 
 -- | Alternative implementation of 'runStateS' using 'transG'.
-runStateS''' :: (Functor m, Monad m) => MSF (StateT s m) a b -> MSF m (s, a) (s, b)
+runStateS''' :: Monad m => MSF (StateT s m) a b -> MSF m (s, a) (s, b)
 runStateS''' = transG transformInput transformOutput
   where
     transformInput  (_, a)           = return a

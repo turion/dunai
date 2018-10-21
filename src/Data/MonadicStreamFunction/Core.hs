@@ -100,7 +100,7 @@ instance Functor m => Functor (MSF m a) where
       fS (b, cont) = (f b, fmap f cont)
 
 -- | 'Applicative' instance for 'MSF's.
-instance (Functor m, Monad m) => Applicative (MSF m a) where
+instance Monad m => Applicative (MSF m a) where
   -- It is possible to define this instance with only Applicative m
   pure = arr . const
   fs <*> bs = (fs &&& bs) >>> arr (uncurry ($))
