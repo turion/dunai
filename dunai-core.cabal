@@ -44,7 +44,7 @@ cabal-version:       >=1.18
 
 source-repository head
   type:     git
-  location: git@github.com:ivanperez-keera/dunai.git
+  location: git@github.com:turion/dunai-core
 
 
 library
