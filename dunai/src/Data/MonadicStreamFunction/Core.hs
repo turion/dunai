@@ -79,7 +79,7 @@ import Control.Applicative (Applicative(..))
 #endif
 
 -- Internal imports
-import Data.MonadicStreamFunction.InternalCore (MSF, embed, feedback, morphGS,
+import Data.MonadicStreamFunction.InternalCore (MSF (..), embed, feedback, morphGS,
                                                 reactimate)
 
 -- * Definitions
@@ -122,12 +122,12 @@ constM = arrM . const
 arrM :: Monad m => (a -> m b) -> MSF m a b
 arrM f =
   -- This implementation is equivalent to:
-  -- arrM f = go
-  --   where
-  --     go = MSF $ \a -> do
-  --            b <- f a
-  --            return (b, go)
-  morphGS (\i a -> i a >>= \(_, c) -> f a >>= \b -> return (b, c)) C.id
+  go
+    where
+      go = MSF $ \a -> do
+             b <- f a
+             return $ b `seq` (b, go)
+  -- morphGS (\i a -> i a >>= \(_, c) -> f a >>= \b -> return (b, c)) C.id
 
 -- | Monadic lifting from one monad into another
 liftBaseM :: (Monad m2, MonadBase m1 m2) => (a -> m1 b) -> MSF m2 a b
