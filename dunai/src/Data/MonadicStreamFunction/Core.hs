@@ -173,8 +173,9 @@ morphS :: (Monad m2, Monad m1)
        => (forall c . m1 c -> m2 c)
        -> MSF m1 a b
        -> MSF m2 a b
-morphS morph = morphGS morph'
-  where
+morphS morph msf = MSF $ \a -> morph $ second (morphS morph) <$> unMSF msf a
+  -- morphGS morph'
+  -- where
     -- The following makes the a's and the b's the same, and it just says:
     -- whatever function m1F you give me to apply to every sample, I use morph
     -- on the result to go from m1 to m2.
@@ -189,5 +190,5 @@ morphS morph = morphGS morph'
     --         -> MSF m2 a2 b2
     --
     --  morph' :: (forall c . (a -> m1 (b, c)) -> (a -> m2 (b, c)))
-    morph' m1F = morph . m1F
+    -- morph' m1F = morph . m1F
 {-# INLINE morphS #-}
