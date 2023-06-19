@@ -19,23 +19,26 @@ module Control.Monad.Trans.MSF.Reader
   where
 
 -- External imports
-import Control.Arrow              (arr, (>>>))
+import Control.Arrow              (arr, (>>>), Arrow (second))
 import Control.Monad.Trans.Reader hiding (liftCallCC, liftCatch)
 
 -- Internal imports
 import Data.MonadicStreamFunction (MSF, morphGS)
+import Data.MonadicStreamFunction.InternalCore (MSF (..))
 
 -- * Reader 'MSF' running and wrapping
 
 -- | Build an 'MSF' in the 'Reader' monad from one that takes the reader
 -- environment as an extra input. This is the opposite of 'runReaderS'.
 readerS :: Monad m => MSF m (r, a) b -> MSF (ReaderT r m) a b
-readerS = morphGS $ \f a -> ReaderT $ \r -> f (r, a)
+-- readerS = morphGS $ \f a -> ReaderT $ \r -> f (r, a)
+readerS msf = MSF $ \a -> ReaderT $ \r -> second readerS <$> unMSF msf (r, a)
 
 -- | Build an 'MSF' that takes an environment as an extra input from one on the
 -- 'Reader' monad. This is the opposite of 'readerS'.
 runReaderS :: Monad m => MSF (ReaderT r m) a b -> MSF m (r, a) b
-runReaderS = morphGS $ \f (r, a) -> runReaderT (f a) r
+-- runReaderS = morphGS $ \f (r, a) -> runReaderT (f a) r
+runReaderS msf = MSF $ \(r, a) -> second runReaderS <$> runReaderT (unMSF msf a) r
 
 -- | Build an 'MSF' /function/ that takes a fixed environment as additional
 -- input, from an MSF in the 'Reader' monad.
