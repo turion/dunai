@@ -72,6 +72,7 @@ instance Monad m => Category (MSF m) where
     (c, sf2') <- unMSF sf2 b
     let sf' = sf2' . sf1'
     c `seq` return (c, sf')
+  {-# INLINE (.) #-}
 
 -- * Monadic computations and 'MSF's
 
@@ -97,12 +98,14 @@ morphGS :: (Functor m1, Functor m2)
         -> MSF m1 a1 b1
         -> MSF m2 a2 b2
 morphGS morph = morphGS' $ \transition a2 c -> morph (`transition` c) a2
+{-# INLINE morphGS #-}
 
 morphGS' :: (Functor m1, Functor m2)
         => (forall c . (a1 -> c -> m1 (b1, c)) -> (a2 -> c -> m2 (b2, c)))
         -> MSF m1 a1 b1
         -> MSF m2 a2 b2
 morphGS' morph = morphGG $ Identity *** \transition -> morph (\a1 state' -> second Identity <$> transition a1 (runIdentity state'))
+{-# INLINE morphGS' #-}
 
 -- | Generic transformation of 'MSF's that can change the internal state.
 --
@@ -124,6 +127,7 @@ feedback :: Monad m => c -> MSF m (a, c) (b, c) -> MSF m a b
 feedback c sf = MSF $ \a -> do
   ((b', c'), sf') <- unMSF sf (a, c)
   return (b', feedback c' sf')
+{-# INLINE feedback #-}
 
 -- * Execution/simulation
 
