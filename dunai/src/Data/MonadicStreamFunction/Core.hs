@@ -97,6 +97,7 @@ instance Monad m => Arrow (MSF m) where
     morphGS $ \f (a, c) -> do
       (b, msf') <- f a
       return ((b, c), msf')
+  {-# INLINE first #-}
 
 -- * Functor and applicative instances
 
@@ -129,6 +130,7 @@ arrM f =
              b <- f a
              return $ b `seq` (b, go)
   -- morphGS (\i a -> i a >>= \(_, c) -> f a >>= \b -> return (b, c)) C.id
+{-# INLINE arrM #-}
 
 -- | Monadic lifting from one monad into another
 liftBaseM :: (Monad m2, MonadBase m1 m2) => (a -> m1 b) -> MSF m2 a b
@@ -188,3 +190,4 @@ morphS morph = morphGS morph'
     --
     --  morph' :: (forall c . (a -> m1 (b, c)) -> (a -> m2 (b, c)))
     morph' m1F = morph . m1F
+{-# INLINE morphS #-}
