@@ -33,12 +33,14 @@ import Data.MonadicStreamFunction.InternalCore (MSF (..))
 readerS :: Monad m => MSF m (r, a) b -> MSF (ReaderT r m) a b
 -- readerS = morphGS $ \f a -> ReaderT $ \r -> f (r, a)
 readerS msf = MSF $ \a -> ReaderT $ \r -> second readerS <$> unMSF msf (r, a)
+{-# INLINE readerS #-}
 
 -- | Build an 'MSF' that takes an environment as an extra input from one on the
 -- 'Reader' monad. This is the opposite of 'readerS'.
 runReaderS :: Monad m => MSF (ReaderT r m) a b -> MSF m (r, a) b
 -- runReaderS = morphGS $ \f (r, a) -> runReaderT (f a) r
 runReaderS msf = MSF $ \(r, a) -> second runReaderS <$> runReaderT (unMSF msf a) r
+{-# INLINE runReaderS #-}
 
 -- | Build an 'MSF' /function/ that takes a fixed environment as additional
 -- input, from an MSF in the 'Reader' monad.
