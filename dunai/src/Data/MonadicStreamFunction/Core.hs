@@ -128,7 +128,7 @@ arrM f =
     where
       go = MSF $ \a -> do
              b <- f a
-             return $ b `seq` (b, go)
+             return (b, go)
   -- morphGS (\i a -> i a >>= \(_, c) -> f a >>= \b -> return (b, c)) C.id
 {-# INLINE arrM #-}
 
