@@ -71,8 +71,9 @@ instance Monad m => Category (MSF m) where
     (b, sf1') <- unMSF sf1 a
     (c, sf2') <- unMSF sf2 b
     let sf' = sf2' . sf1'
-    c `seq` return (c, sf')
+    b `seq` c `seq` sf' `seq` return (c, sf')
   {-# INLINE (.) #-}
+
 
 -- * Monadic computations and 'MSF's
 
@@ -126,7 +127,7 @@ morphGG morph msf =
 feedback :: Monad m => c -> MSF m (a, c) (b, c) -> MSF m a b
 feedback c sf = MSF $ \a -> do
   ((b', c'), sf') <- unMSF sf (a, c)
-  return (b', feedback c' sf')
+  return $ c' `seq` (b', feedback c' sf')
 {-# INLINE feedback #-}
 
 -- * Execution/simulation
