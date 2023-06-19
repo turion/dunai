@@ -89,14 +89,14 @@ instance Monad m => Arrow (MSF m) where
   arr f = arrM (return . f)
   {-# INLINE arr #-}
 
-  first =
+  first sf =
     -- This implementation is equivalent to:
-    -- first sf = MSF $ \(a, c) -> do
-    --   (b, sf') <- unMSF sf a
-    --   b `seq` return ((b, c), first sf')
-    morphGS $ \f (a, c) -> do
-      (b, msf') <- f a
-      return ((b, c), msf')
+    MSF $ \(a, c) -> do
+      (b, sf') <- unMSF sf a
+      b `seq` return ((b, c), first sf')
+    -- morphGS $ \f (a, c) -> do
+    --   (b, msf') <- f a
+    --   return ((b, c), msf')
   {-# INLINE first #-}
 
 -- * Functor and applicative instances
