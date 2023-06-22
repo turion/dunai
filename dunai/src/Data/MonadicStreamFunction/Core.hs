@@ -87,6 +87,7 @@ import Data.MonadicStreamFunction.InternalCore (MSF (..), embed, feedback, morph
 -- | 'Arrow' instance for 'MSF's.
 instance Monad m => Arrow (MSF m) where
   arr f = arrM (return . f)
+  {-# INLINE arr #-}
 
   first =
     -- This implementation is equivalent to:
