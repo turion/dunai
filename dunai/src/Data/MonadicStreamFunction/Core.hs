@@ -120,6 +120,7 @@ instance (Functor m, Monad m) => Applicative (MSF m a) where
 -- | Lifts a monadic computation into a Stream.
 constM :: Monad m => m b -> MSF m a b
 constM = arrM . const
+{-# INLINE constM #-}
 
 -- | Apply a monadic transformation to every element of the input stream.
 --
