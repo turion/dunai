@@ -158,3 +158,4 @@ reactimate :: Monad m => MSF m () () -> m ()
 reactimate sf = do
   (_, sf') <- unMSF sf ()
   reactimate sf'
+{-# INLINE reactimate #-}
