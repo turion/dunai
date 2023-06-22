@@ -123,6 +123,8 @@ accumulateWith :: Monad m => (a -> s -> s) -> s -> MSF m a s
 accumulateWith f s0 = feedback s0 $ arr g
   where
     g (a, s) = let s' = f a s in (s', s')
+{-# INLINE accumulateWith #-}
+
 
 -- | Applies a transfer function to the input and an accumulator, returning the
 -- updated accumulator and output.
