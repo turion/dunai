@@ -166,6 +166,7 @@ liftTransS :: (MonadTrans t, Monad m, Monad (t m))
            => MSF m a b
            -> MSF (t m) a b
 liftTransS = morphS lift
+{-# INLINE liftTransS #-}
 
 -- *** Generic monadic transformation
 
