@@ -68,3 +68,4 @@ sequenceS = foldr ((<+>) . liftTransS) zeroArrow
 -- | Apply an 'MSF' to every input.
 mapMSF :: Monad m => MSF m a b -> MSF m [a] [b]
 mapMSF = morphGS' $ \transition as -> runStateT $ for as $ \a -> StateT (transition a)
+{-# INLINE mapMSF #-}

@@ -63,3 +63,4 @@ concatS msf = MSF $ \_ -> tick msf []
     tick msf' []     = do
       (bs, msf'') <- unMSF msf' ()
       tick msf'' bs
+{-# INLINE concatS #-}
