@@ -40,7 +40,10 @@ import Control.Applicative ((<$>))
 import Control.Monad.Trans.List hiding (liftCallCC, liftCatch)
 
 -- Internal imports
-import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF))
+import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF), morphGG, morphGS, morphGS')
+import Control.Monad.Trans.State
+import Data.Traversable (for)
+import Data.MonadicStreamFunction (liftTransS, ArrowPlus (..), ArrowZero (zeroArrow))
 
 -- * List monad
 
@@ -52,28 +55,14 @@ import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF))
 -- so the outputs produced at each individual step are not guaranteed to all
 -- have the same length.
 widthFirst :: (Functor m, Monad m) => MSF (ListT m) a b -> MSF m a [b]
-widthFirst msf = widthFirst' [msf]
-  where
-    widthFirst' msfs = MSF $ \a -> do
-      (bs, msfs') <- unzip . concat <$> mapM (runListT . flip unMSF a) msfs
-      return (bs, widthFirst' msfs')
+widthFirst = morphGG $ \(c, transition) -> ([c], \a c' -> fmap unzip . runListT $ ListT (return c') >>= transition a)
 
 -- | Build an 'MSF' in the 'ListT' transformer by broadcasting the input stream
 -- value to each MSF in a given list.
 sequenceS :: Monad m => [MSF m a b] -> MSF (ListT m) a b
-sequenceS msfs = MSF $ \a -> ListT $ sequence $ apply a <$> msfs
-  where
-    apply a msf = do
-      (b, msf') <- unMSF msf a
-      return (b, sequenceS [msf'])
+sequenceS = foldr ((<+>) . liftTransS) zeroArrow
 
+-- FIXME: Could easily extend to any traversable
 -- | Apply an 'MSF' to every input.
 mapMSF :: Monad m => MSF m a b -> MSF m [a] [b]
-mapMSF = MSF . consume
-  where
-    consume :: Monad m => MSF m a t -> [a] -> m ([t], MSF m [a] [t])
-    consume sf []     = return ([], mapMSF sf)
-    consume sf (a:as) = do
-      (b, sf')   <- unMSF sf a
-      (bs, sf'') <- consume sf' as
-      b `seq` return (b:bs, sf'')
+mapMSF = morphGS' $ \transition as -> runStateT $ for as $ \a -> StateT (transition a)

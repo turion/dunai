@@ -47,6 +47,8 @@ module Data.MonadicStreamFunction.InternalCore where
 -- External imports
 import Control.Category (Category (..))
 import Prelude          hiding (id, sum, (.))
+import Control.Arrow (second, (***))
+import Data.Functor.Identity
 
 -- * Definitions
 
@@ -88,15 +90,32 @@ instance Monad m => Category (MSF m) where
 -- most general one that only changes input, output and side effect types, and
 -- doesn't influence control flow. Other handling functions like exception
 -- handling or 'ListT' broadcasting necessarily change control flow.
-morphGS :: Monad m2
+morphGS :: (Functor m1, Functor m2)
         => (forall c . (a1 -> m1 (b1, c)) -> (a2 -> m2 (b2, c)))
           -- ^ The natural transformation. @mi@, @ai@ and @bi@ for @i = 1, 2@
           --   can be chosen freely, but @c@ must be universally quantified
         -> MSF m1 a1 b1
         -> MSF m2 a2 b2
-morphGS morph msf = MSF $ \a2 -> do
-  (b2, msf') <- morph (unMSF msf) a2
-  return (b2, morphGS morph msf')
+morphGS morph = morphGS' $ \transition a2 c -> morph (`transition` c) a2
+
+morphGS' :: (Functor m1, Functor m2)
+        => (forall c . (a1 -> c -> m1 (b1, c)) -> (a2 -> c -> m2 (b2, c)))
+        -> MSF m1 a1 b1
+        -> MSF m2 a2 b2
+morphGS' morph = morphGG $ Identity *** \transition -> morph (\a1 state' -> second Identity <$> transition a1 (runIdentity state'))
+
+-- | Generic transformation of 'MSF's that can change the internal state.
+--
+-- __Mathematical background:__ The type of an effectful Mealy state machine
+-- is isomorphic to 'MSF', so a morphism of these state machines is also
+-- a morphism of 'MSF's. It turns out that many common transformations
+-- are of this form.
+morphGG :: Functor n => (forall c . (c, a1 -> c -> m (b1, c)) -> (t c, a2 -> t c -> n (b2, t c))) -> MSF m a1 b1 -> MSF n a2 b2
+morphGG morph msf =
+  let (state, transition) = morph (msf, flip unMSF)
+      go state' = MSF $ \a -> second go <$> transition a state'
+  in go state
+{-# INLINE morphGG #-}
 
 -- * Feedback loops
 
