@@ -61,6 +61,7 @@ widthFirst = morphGG $ \(c, transition) -> ([c], \a c' -> fmap unzip . runListT 
 -- value to each MSF in a given list.
 sequenceS :: Monad m => [MSF m a b] -> MSF (ListT m) a b
 sequenceS = foldr ((<+>) . liftTransS) zeroArrow
+{-# INLINE sequenceS #-}
 
 -- FIXME: Could easily extend to any traversable
 -- | Apply an 'MSF' to every input.
