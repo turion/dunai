@@ -56,6 +56,7 @@ import Data.MonadicStreamFunction (liftTransS, ArrowPlus (..), ArrowZero (zeroAr
 -- have the same length.
 widthFirst :: (Functor m, Monad m) => MSF (ListT m) a b -> MSF m a [b]
 widthFirst = morphGG $ \(c, transition) -> ([c], \a c' -> fmap unzip . runListT $ ListT (return c') >>= transition a)
+{-# INLINE widthFirst #-}
 
 -- | Build an 'MSF' in the 'ListT' transformer by broadcasting the input stream
 -- value to each MSF in a given list.
