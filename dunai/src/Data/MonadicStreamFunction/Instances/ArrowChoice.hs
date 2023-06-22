@@ -25,3 +25,4 @@ instance Monad m => ArrowChoice (MSF m) where
       f (Left a) = do (b, sf') <- unMSF sf a
                       return (Left b, left sf')
       f (Right c) = return (Right c, left sf)
+  {-# INLINE left #-}
