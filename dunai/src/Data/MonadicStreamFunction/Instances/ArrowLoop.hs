@@ -28,3 +28,4 @@ instance MonadFix m => ArrowLoop (MSF m) where
   loop sf = MSF $ \a -> do
               rec ((b, c), sf') <- unMSF sf (a, c)
               return (b, loop sf')
+  {-# INLINE loop #-}
