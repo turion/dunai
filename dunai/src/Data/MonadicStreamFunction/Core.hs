@@ -104,13 +104,16 @@ instance Monad m => Arrow (MSF m) where
 -- | 'Functor' instance for 'MSF's.
 instance Monad m => Functor (MSF m a) where
   fmap f msf = msf >>> arr f
+  {-# INLINE fmap #-}
 
 -- | 'Applicative' instance for 'MSF's.
 instance (Functor m, Monad m) => Applicative (MSF m a) where
   -- It is possible to define this instance with only Applicative m
   pure = arr . const
+  {-# INLINE pure #-}
 
   fs <*> bs = (fs &&& bs) >>> arr (uncurry ($))
+  {-# INLINE (<*>) #-}
 
 -- ** Lifting point-wise computations
 
