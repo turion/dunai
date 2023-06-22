@@ -66,6 +66,7 @@ instance Monad m => Category (MSF m) where
   id = go
     where
       go = MSF $ \a -> return (a, go)
+  {-# INLINE id #-}
 
   sf2 . sf1 = MSF $ \a -> do
     (b, sf1') <- unMSF sf1 a
