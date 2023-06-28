@@ -219,7 +219,16 @@ test-suite regression-tests
     , dunai
 
 executable spaceleak
-  main-is: Main.hs
+  main-is: ListT.hs
+  hs-source-dirs: spaceleak
+  default-language: Haskell2010
+  build-depends:
+      base >= 4 && <5
+    , dunai
+  ghc-options: -fprof-auto -rtsopts
+
+executable spaceleak-arrm
+  main-is: ArrM.hs
   hs-source-dirs: spaceleak
   default-language: Haskell2010
   build-depends:
