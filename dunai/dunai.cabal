@@ -225,7 +225,7 @@ executable spaceleak
   build-depends:
       base >= 4 && <5
     , dunai
-  ghc-options: -fprof-auto -rtsopts
+  ghc-options: -fprof-auto -rtsopts -ddump-simpl -ddump-to-file
 
 executable spaceleak-arrm
   main-is: ArrM.hs
@@ -234,4 +234,4 @@ executable spaceleak-arrm
   build-depends:
       base >= 4 && <5
     , dunai
-  ghc-options: -fprof-auto -rtsopts
+  ghc-options: -fprof-auto -rtsopts -ddump-simpl -ddump-to-file
