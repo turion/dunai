@@ -81,6 +81,7 @@ import Control.Applicative (Applicative(..))
 -- Internal imports
 import Data.MonadicStreamFunction.InternalCore (MSF (..), embed, feedback, morphGS,
                                                 reactimate)
+import Control.Monad ((>=>))
 
 -- * Definitions
 
@@ -134,7 +135,10 @@ arrM f =
              b <- f a
              return (b, go)
   -- morphGS (\i a -> i a >>= \(_, c) -> f a >>= \b -> return (b, c)) C.id
-{-# INLINE arrM #-}
+{-# INLINE [1] arrM #-}
+
+{-# RULES "arrM/>>>" forall f g . arrM f >>> arrM g = arrM (f >=> g) #-}
+
 
 -- | Monadic lifting from one monad into another
 liftBaseM :: (Monad m2, MonadBase m1 m2) => (a -> m1 b) -> MSF m2 a b
