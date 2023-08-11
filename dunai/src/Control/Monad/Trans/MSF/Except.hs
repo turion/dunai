@@ -34,7 +34,7 @@ import           Data.Void                  (Void)
 import Data.MonadicStreamFunction              (arrM, constM, count, feedback,
                                                 liftTransS, mapMaybeS, morphS,
                                                 reactimate)
-import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF))
+import Data.MonadicStreamFunction.InternalCore (MSF (MSF), unMSF)
 
 -- External, necessary for older base versions
 #if !MIN_VERSION_base(4,10,0)
@@ -46,6 +46,7 @@ fromRight _ (Right b) = b
 fromRight b (Left  _) = b
 #else
 import           Data.Either                (fromLeft, fromRight)
+import Data.Maybe (fromMaybe)
 #endif
 
 -- * Throwing exceptions
@@ -184,17 +185,28 @@ instance Monad m => Monad (MSFExcept m a b) where
   return = pure
   MSFExcept msf >>= f = MSFExcept $ handleExceptT msf $ runMSFExcept . f
 
+-- FIXME This is slow after the first exception?
 -- | Execute an MSF and, if it throws an exception, recover by switching to a
 -- second MSF.
 handleExceptT :: Monad m
               => MSF (ExceptT e1 m) a b
               -> (e1 -> MSF (ExceptT e2 m) a b)
               -> MSF (ExceptT e2 m) a b
-handleExceptT msf f = flip handleGen msf $ \a mbcont -> do
+handleExceptT (MSF s_ t) f = MSF (Left s_) go
+  where
+    go a (Left s1) = ExceptT $ do
+      thing <- runExceptT $ t a s1
+      case thing of
+        Left e1 -> runExceptT $ go a $ Right $ f e1
+        Right (b, s') -> return $ Right (b, Left s')
+    go a (Right msf) = fmap Right <$> unMSF msf a
+
+
+   {- flip handleGen msf $ \a mbcont -> do
   ebcont <- lift $ runExceptT mbcont
   case ebcont of
     Left e          -> unMSF (f e) a
-    Right (b, msf') -> return (b, handleExceptT msf' f)
+    Right (b, msf') -> return (b, handleExceptT msf' f)-}
 
 -- | If no exception can occur, the 'MSF' can be executed without the 'ExceptT'
 -- layer.
@@ -299,18 +311,6 @@ transG :: (Monad m1, Monad m2)
        -> (forall c. a2 -> m1 (b1, c) -> m2 (b2, Maybe c))
        -> MSF m1 a1 b1
        -> MSF m2 a2 b2
-transG transformInput transformOutput msf = go
-  where
-    go = MSF $ \a2 -> do
-           (b2, msf') <- transformOutput a2 $ unMSF msf =<< transformInput a2
-           case msf' of
-             Just msf'' ->
-               return (b2, transG transformInput transformOutput msf'')
-             Nothing ->
-               return (b2, go)
-
--- | Use a generic handler to handle exceptions in MSF processing actions.
-handleGen :: (a -> m1 (b1, MSF m1 a b1) -> m2 (b2, MSF m2 a b2))
-          -> MSF m1 a b1
-          -> MSF m2 a b2
-handleGen handler msf = MSF $ \a -> handler a (unMSF msf a)
+transG transformInput transformOutput (MSF s_ t) = MSF s_ $ \a2 s -> do
+  (b2, sMaybe) <- transformOutput a2 $ flip t s =<< transformInput a2
+  return (b2, fromMaybe s sMaybe)

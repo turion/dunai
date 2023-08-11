@@ -40,10 +40,11 @@ import Control.Applicative ((<$>))
 import Control.Monad.Trans.List hiding (liftCallCC, liftCatch)
 
 -- Internal imports
-import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF), morphGG, morphGS, morphGS')
+import Data.MonadicStreamFunction.InternalCore (MSF (MSF), morphGG, morphGS, morphGS')
 import Control.Monad.Trans.State
 import Data.Traversable (for)
 import Data.MonadicStreamFunction (liftTransS, ArrowPlus (..), ArrowZero (zeroArrow))
+import Control.Monad (forM)
 
 -- * List monad
 
@@ -61,6 +62,12 @@ widthFirst = morphGG $ \(c, transition) -> ([c], \a c' -> fmap unzip . runListT 
 -- value to each MSF in a given list.
 sequenceS :: Monad m => [MSF m a b] -> MSF (ListT m) a b
 sequenceS = foldr ((<+>) . liftTransS) zeroArrow
+
+replicateS :: Monad m => Int -> MSF m a b -> MSF (ListT m) a b
+replicateS n (MSF s_ t) = MSF (replicate n s_) $ \a ss -> ListT $ forM ss $ fmap (fmap pure) . t a
+
+parallelS :: Monad m => Int -> MSF m a b -> MSF m a [b]
+parallelS n (MSF s_ t) = MSF (replicate n s_) $ \a ss -> unzip <$> forM ss (t a)
 
 -- FIXME: Could easily extend to any traversable
 -- | Apply an 'MSF' to every input.

@@ -8,7 +8,7 @@
 module Data.MonadicStreamFunction.Async where
 
 -- Internal imports
-import Data.MonadicStreamFunction.InternalCore (MSF(MSF, unMSF))
+import Data.MonadicStreamFunction.InternalCore (MSF(MSF))
 import Data.MonadicStreamFunction.Util         (MStream)
 
 -- |
@@ -57,9 +57,17 @@ import Data.MonadicStreamFunction.Util         (MStream)
 -- "Yes"
 -- ^CInterrupted.
 concatS :: Monad m => MStream m [b] -> MStream m b
-concatS msf = MSF $ \_ -> tick msf []
+concatS (MSF s_ t) = MSF ([], s_) $ \() -> go
+  where
+    go ([], s) = do
+      (bs, s') <- t () s
+      go (bs, s')
+    go (b:bs, s) = return (b, (bs, s))
+
+{-$ \_ -> tick msf []
   where
     tick msf' (b:bs) = return (b, MSF $ \_ -> tick msf' bs)
     tick msf' []     = do
       (bs, msf'') <- unMSF msf' ()
       tick msf'' bs
+-}

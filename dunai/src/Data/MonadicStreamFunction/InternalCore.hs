@@ -1,4 +1,5 @@
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE GADTs #-}
 -- |
 -- Copyright  : (c) Ivan Perez and Manuel Baerenz, 2016
 -- License    : BSD3
@@ -57,21 +58,22 @@ import Data.Functor.Identity
 -- 'MSF's should be applied to streams or executed indefinitely or until they
 -- terminate. See 'reactimate' and 'reactimateB' for details. In general,
 -- calling the value constructor 'MSF' or the function 'unMSF' is discouraged.
-data MSF m a b = MSF { unMSF :: a -> m (b, MSF m a b) }
+data MSF m a b where
+  MSF :: s -> (a -> s -> m (b, s)) -> MSF m a b
+
+unMSF :: Functor m => MSF m a b -> a -> m (b, MSF m a b)
+unMSF (MSF s transition) a = second (`MSF` transition) <$> transition a s
 
 -- Instances
 
 -- | Instance definition for 'Category'. Defines 'id' and '.'.
 instance Monad m => Category (MSF m) where
-  id = go
-    where
-      go = MSF $ \a -> return (a, go)
+  id = MSF () $ \a _ -> return (a, ())
 
-  sf2 . sf1 = MSF $ \a -> do
-    (b, sf1') <- unMSF sf1 a
-    (c, sf2') <- unMSF sf2 b
-    let sf' = sf2' . sf1'
-    c `seq` return (c, sf')
+  MSF s2_ t2 . MSF s1_ t1 = MSF (s1_, s2_) $ \a (s1, s2) -> do
+    (b, s1') <- t1 a s1
+    (c, s2') <- t2 b s2
+    b `seq` c `seq` s1' `seq` s2' `seq` return (c, (s1', s2'))
 
 -- * Monadic computations and 'MSF's
 
@@ -111,19 +113,14 @@ morphGS' morph = morphGG $ Identity *** \transition -> morph (\a1 state' -> seco
 -- a morphism of 'MSF's. It turns out that many common transformations
 -- are of this form.
 morphGG :: Functor n => (forall c . (c, a1 -> c -> m (b1, c)) -> (t c, a2 -> t c -> n (b2, t c))) -> MSF m a1 b1 -> MSF n a2 b2
-morphGG morph msf =
-  let (state, transition) = morph (msf, flip unMSF)
-      go state' = MSF $ \a -> second go <$> transition a state'
-  in go state
+morphGG morph (MSF s t) = uncurry MSF $ morph (s, t)
 {-# INLINE morphGG #-}
 
 -- * Feedback loops
 
 -- | Well-formed looped connection of an output component as a future input.
 feedback :: Monad m => c -> MSF m (a, c) (b, c) -> MSF m a b
-feedback c sf = MSF $ \a -> do
-  ((b', c'), sf') <- unMSF sf (a, c)
-  return (b', feedback c' sf')
+feedback c_ (MSF s_ t) = MSF (s_, c_) $ \a (s, c) -> (\((b', c'), s') -> (b', (s', c'))) <$> t (a, c) s
 
 -- * Execution/simulation
 
@@ -149,6 +146,8 @@ embed sf (a:as) = do
 
 -- | Run an 'MSF' indefinitely passing a unit-carrying input stream.
 reactimate :: Monad m => MSF m () () -> m ()
-reactimate sf = do
-  (_, sf') <- unMSF sf ()
-  reactimate sf'
+reactimate (MSF s_ t) = go s_
+  where
+    go s = do
+      (_, s') <- t () s
+      go s'

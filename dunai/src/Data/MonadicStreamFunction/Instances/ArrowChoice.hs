@@ -15,13 +15,14 @@ import Control.Arrow (ArrowChoice (..))
 
 -- Internal imports
 import Data.MonadicStreamFunction.Core         ()
-import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF))
+import Data.MonadicStreamFunction.InternalCore (MSF (MSF))
 
 -- | 'ArrowChoice' instance for MSFs.
 instance Monad m => ArrowChoice (MSF m) where
   left :: MSF m a b -> MSF m (Either a c) (Either b c)
-  left sf = MSF f
+  left (MSF s_ t) = MSF s_ f
     where
-      f (Left a) = do (b, sf') <- unMSF sf a
-                      return (Left b, left sf')
-      f (Right c) = return (Right c, left sf)
+      f (Left a) s = do
+        (b, s') <- t a s
+        return (Left b, s')
+      f (Right c) s = return (Right c, s)
