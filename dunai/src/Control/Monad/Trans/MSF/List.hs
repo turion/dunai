@@ -58,6 +58,7 @@ import Control.Monad (forM)
 widthFirst :: (Functor m, Monad m) => MSF (ListT m) a b -> MSF m a [b]
 widthFirst = morphGG $ \(c, transition) -> ([c], \a c' -> fmap unzip . runListT $ ListT (return c') >>= transition a)
 
+-- FIXME Dangerous at compile time when the list is very long
 -- | Build an 'MSF' in the 'ListT' transformer by broadcasting the input stream
 -- value to each MSF in a given list.
 sequenceS :: Monad m => [MSF m a b] -> MSF (ListT m) a b
