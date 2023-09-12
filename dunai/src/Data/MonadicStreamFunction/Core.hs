@@ -5,6 +5,7 @@
 -- implementors further flexibility while giving most users the features they
 -- expect.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE BangPatterns #-}
 -- |
 -- Copyright  : (c) Ivan Perez and Manuel Baerenz, 2016
 -- License    : BSD3
@@ -80,7 +81,7 @@ import Control.Applicative (Applicative(..))
 
 -- Internal imports
 import Data.MonadicStreamFunction.InternalCore (MSF (..), embed, feedback, morphGS,
-                                                reactimate)
+                                                reactimate, StrictTuple (..))
 
 -- * Definitions
 
@@ -94,8 +95,8 @@ instance Monad m => Arrow (MSF m) where
     --   (b, sf') <- unMSF sf a
     --   b `seq` return ((b, c), first sf')
     morphGS $ \f (a, c) -> do
-      (b, msf') <- f a
-      return ((b, c), msf')
+      StrictTuple b msf' <- f a
+      return $ StrictTuple (b, c) msf'
 
 -- * Functor and applicative instances
 
@@ -125,8 +126,8 @@ arrM f =
   go
     where
       go = MSF $ \a -> do
-             b <- f a
-             return $ b `seq` (b, go)
+             !b <- f a
+             return $ StrictTuple b go
   -- morphGS (\i a -> i a >>= \(_, c) -> f a >>= \b -> return (b, c)) C.id
 
 -- | Monadic lifting from one monad into another

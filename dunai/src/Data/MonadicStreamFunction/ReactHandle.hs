@@ -16,7 +16,7 @@ import Data.IORef             (IORef, newIORef, readIORef, writeIORef)
 
 -- Internal imports
 import Data.MonadicStreamFunction              (MSF)
-import Data.MonadicStreamFunction.InternalCore (unMSF)
+import Data.MonadicStreamFunction.InternalCore (unMSF, StrictTuple (..))
 
 -- | A storage for the current state of an 'MSF'. The 'MSF' may not require
 -- input or produce output data, all such data must be handled through side
@@ -31,5 +31,5 @@ reactInit = liftIO . newIORef
 react :: MonadIO m => ReactHandle m -> m ()
 react handle = do
   msf <- liftIO $ readIORef handle
-  (_, msf') <- unMSF msf ()
+  StrictTuple _ msf' <- unMSF msf ()
   liftIO $ writeIORef handle msf'

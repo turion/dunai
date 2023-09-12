@@ -5,6 +5,7 @@
 {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 #else
 {-# OPTIONS_GHC -Wno-deprecations #-}
+{-# LANGUAGE BangPatterns #-}
 #endif
 -- |
 -- Copyright  : (c) Ivan Perez and Manuel Baerenz, 2016
@@ -40,7 +41,7 @@ import Control.Applicative ((<$>))
 import Control.Monad.Trans.List hiding (liftCallCC, liftCatch)
 
 -- Internal imports
-import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF), morphGG, morphGS, morphGS')
+import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF), morphGG, morphGS, morphGS', StrictTuple (..))
 import Control.Monad.Trans.State
 import Data.Traversable (for)
 import Data.MonadicStreamFunction (liftTransS, ArrowPlus (..), ArrowZero (zeroArrow))
@@ -55,7 +56,13 @@ import Data.MonadicStreamFunction (liftTransS, ArrowPlus (..), ArrowZero (zeroAr
 -- so the outputs produced at each individual step are not guaranteed to all
 -- have the same length.
 widthFirst :: (Functor m, Monad m) => MSF (ListT m) a b -> MSF m a [b]
-widthFirst = morphGG $ \(c, transition) -> ([c], \a c' -> fmap unzip . runListT $ ListT (return c') >>= transition a)
+widthFirst = morphGG $ \c transition -> StrictTuple [c] $ \a c' -> fmap unzipST . runListT $ ListT (return c') >>= transition a
+
+unzipST :: [StrictTuple b c] -> StrictTuple [b] [c]
+unzipST [] = StrictTuple [] []
+unzipST (StrictTuple b c : bcs) =
+  let !(StrictTuple bs cs) = unzipST bcs
+  in StrictTuple (b : bs) (c : cs)
 
 -- | Build an 'MSF' in the 'ListT' transformer by broadcasting the input stream
 -- value to each MSF in a given list.
@@ -65,4 +72,4 @@ sequenceS = foldr ((<+>) . liftTransS) zeroArrow
 -- FIXME: Could easily extend to any traversable
 -- | Apply an 'MSF' to every input.
 mapMSF :: Monad m => MSF m a b -> MSF m [a] [b]
-mapMSF = morphGS' $ \transition as -> runStateT $ for as $ \a -> StateT (transition a)
+mapMSF = morphGS' $ \transition as -> (fmap (uncurry StrictTuple) .) $ runStateT $ for as $ \a -> StateT $ fmap (\(StrictTuple b c) -> (b, c)) . transition a

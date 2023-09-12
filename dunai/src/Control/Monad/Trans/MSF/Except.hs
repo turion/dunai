@@ -34,7 +34,7 @@ import           Data.Void                  (Void)
 import Data.MonadicStreamFunction              (arrM, constM, count, feedback,
                                                 liftTransS, mapMaybeS, morphS,
                                                 reactimate)
-import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF))
+import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF), StrictTuple (StrictTuple))
 
 -- External, necessary for older base versions
 #if !MIN_VERSION_base(4,10,0)
@@ -125,8 +125,8 @@ untilE msf msfe = proc a -> do
 exceptS :: (Functor m, Monad m) => MSF (ExceptT e m) a b -> MSF m a (Either e b)
 exceptS = transG return $ const $ fmap f . runExceptT
   where
-    f (Left e)       = (Left e , Nothing)
-    f (Right (b, c)) = (Right b, Just c )
+    f (Left e)       = StrictTuple (Left e) Nothing
+    f (Right (StrictTuple b c)) = StrictTuple (Right b) (Just c)
 
 -- | Embed an 'ExceptT' value inside the 'MSF'. Whenever the input value is an
 -- ordinary value, it is passed on. If it is an exception, it is raised.
@@ -194,7 +194,7 @@ handleExceptT msf f = flip handleGen msf $ \a mbcont -> do
   ebcont <- lift $ runExceptT mbcont
   case ebcont of
     Left e          -> unMSF (f e) a
-    Right (b, msf') -> return (b, handleExceptT msf' f)
+    Right (StrictTuple b msf') -> return $ StrictTuple b $ handleExceptT msf' f
 
 -- | If no exception can occur, the 'MSF' can be executed without the 'ExceptT'
 -- layer.
@@ -296,21 +296,22 @@ dSwitch sf f = catchS ef f
 -- previous 'MSF' is used if a new one is not produced.
 transG :: (Monad m1, Monad m2)
        => (a2 -> m1 a1)
-       -> (forall c. a2 -> m1 (b1, c) -> m2 (b2, Maybe c))
+       -> (forall c. a2 -> m1 (StrictTuple b1 c) -> m2 (StrictTuple b2 (Maybe c)))
        -> MSF m1 a1 b1
        -> MSF m2 a2 b2
 transG transformInput transformOutput msf = go
   where
     go = MSF $ \a2 -> do
-           (b2, msf') <- transformOutput a2 $ unMSF msf =<< transformInput a2
+           StrictTuple b2 msf' <- transformOutput a2 $ unMSF msf =<< transformInput a2
            case msf' of
              Just msf'' ->
-               return (b2, transG transformInput transformOutput msf'')
+              -- FIXME Am I reintroducing lazyness here?
+              return $ StrictTuple b2 $ transG transformInput transformOutput msf''
              Nothing ->
-               return (b2, go)
+              return $ StrictTuple b2 go
 
 -- | Use a generic handler to handle exceptions in MSF processing actions.
-handleGen :: (a -> m1 (b1, MSF m1 a b1) -> m2 (b2, MSF m2 a b2))
+handleGen :: (a -> m1 (StrictTuple b1 (MSF m1 a b1)) -> m2 (StrictTuple b2 (MSF m2 a b2)))
           -> MSF m1 a b1
           -> MSF m2 a b2
 handleGen handler msf = MSF $ \a -> handler a (unMSF msf a)

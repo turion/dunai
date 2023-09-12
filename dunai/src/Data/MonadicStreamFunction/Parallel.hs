@@ -13,15 +13,15 @@ import GHC.Conc      (par, pseq)
 
 -- Internal imports
 import Data.MonadicStreamFunction              ()
-import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF))
+import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF), StrictTuple (..))
 
 -- | Run two 'MSF's in parallel, taking advantage of parallelism if possible.
 -- This is the parallel version of '***'.
 (*|*) :: Monad m => MSF m a b -> MSF m c d -> MSF m (a, c) (b, d)
 msf1 *|* msf2 = MSF $ \(a, c) -> do
-  (b, msf1') <- unMSF msf1 a
-  (d, msf2') <- unMSF msf2 c
-  b `par` d `pseq` return ((b, d), msf1' *|* msf2')
+  StrictTuple b msf1' <- unMSF msf1 a
+  StrictTuple d msf2' <- unMSF msf2 c
+  b `par` d `pseq` return $ StrictTuple (b, d) $ msf1' *|* msf2'
 
 -- | Parallel version of '&&&'.
 (&|&) :: Monad m => MSF m a b -> MSF m a c -> MSF m a (b, c)

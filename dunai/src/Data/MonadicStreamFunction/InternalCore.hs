@@ -1,4 +1,7 @@
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveFunctor #-}
 -- |
 -- Copyright  : (c) Ivan Perez and Manuel Baerenz, 2016
 -- License    : BSD3
@@ -57,21 +60,22 @@ import Data.Functor.Identity
 -- 'MSF's should be applied to streams or executed indefinitely or until they
 -- terminate. See 'reactimate' and 'reactimateB' for details. In general,
 -- calling the value constructor 'MSF' or the function 'unMSF' is discouraged.
-data MSF m a b = MSF { unMSF :: a -> m (b, MSF m a b) }
+newtype MSF m a b = MSF { unMSF :: a -> m (StrictTuple b (MSF m a b)) }
 
 -- Instances
 
 -- | Instance definition for 'Category'. Defines 'id' and '.'.
 instance Monad m => Category (MSF m) where
-  id = go
+  id = continuation
     where
-      go = MSF $ \a -> return (a, go)
+      continuation = MSF $ \output -> return (StrictTuple output continuation)
 
   sf2 . sf1 = MSF $ \a -> do
-    (b, sf1') <- unMSF sf1 a
-    (c, sf2') <- unMSF sf2 b
-    let sf' = sf2' . sf1'
-    c `seq` return (c, sf')
+    StrictTuple b sf1' <- unMSF sf1 a
+    StrictTuple c sf2' <- unMSF sf2 b
+    let continuation = sf2' . sf1'
+        !result = StrictTuple c continuation
+    return result
 
 -- * Monadic computations and 'MSF's
 
@@ -91,7 +95,7 @@ instance Monad m => Category (MSF m) where
 -- doesn't influence control flow. Other handling functions like exception
 -- handling or 'ListT' broadcasting necessarily change control flow.
 morphGS :: (Functor m1, Functor m2)
-        => (forall c . (a1 -> m1 (b1, c)) -> (a2 -> m2 (b2, c)))
+        => (forall c . (a1 -> m1 (StrictTuple b1 c)) -> (a2 -> m2 (StrictTuple b2 c)))
           -- ^ The natural transformation. @mi@, @ai@ and @bi@ for @i = 1, 2@
           --   can be chosen freely, but @c@ must be universally quantified
         -> MSF m1 a1 b1
@@ -99,10 +103,13 @@ morphGS :: (Functor m1, Functor m2)
 morphGS morph = morphGS' $ \transition a2 c -> morph (`transition` c) a2
 
 morphGS' :: (Functor m1, Functor m2)
-        => (forall c . (a1 -> c -> m1 (b1, c)) -> (a2 -> c -> m2 (b2, c)))
+        => (forall c . (a1 -> c -> m1 (StrictTuple b1 c)) -> (a2 -> c -> m2 (StrictTuple b2 c)))
         -> MSF m1 a1 b1
         -> MSF m2 a2 b2
-morphGS' morph = morphGG $ Identity *** \transition -> morph (\a1 state' -> second Identity <$> transition a1 (runIdentity state'))
+morphGS' morph = morphGG $ \c0 -> StrictTuple (Identity c0) . (\f a c -> fmap Identity <$> morph f a (runIdentity c))
+
+data StrictTuple a b = StrictTuple !a !b
+  deriving Functor
 
 -- | Generic transformation of 'MSF's that can change the internal state.
 --
@@ -110,10 +117,11 @@ morphGS' morph = morphGG $ Identity *** \transition -> morph (\a1 state' -> seco
 -- is isomorphic to 'MSF', so a morphism of these state machines is also
 -- a morphism of 'MSF's. It turns out that many common transformations
 -- are of this form.
-morphGG :: Functor n => (forall c . (c, a1 -> c -> m (b1, c)) -> (t c, a2 -> t c -> n (b2, t c))) -> MSF m a1 b1 -> MSF n a2 b2
+morphGG :: Functor n => (forall c . c -> (a1 -> c -> m (StrictTuple b1 c)) -> StrictTuple (t c) (a2 -> t c -> n (StrictTuple b2 (t c)))) -> MSF m a1 b1 -> MSF n a2 b2
 morphGG morph msf =
-  let (state, transition) = morph (msf, flip unMSF)
-      go state' = MSF $ \a -> second go <$> transition a state'
+  let StrictTuple state transition = morph msf $ flip unMSF
+  -- let StrictTuple state transition = fmap _ $ morph msf $ flip unMSF
+      go state' = MSF $ \a -> fmap go <$> transition a state'
   in go state
 {-# INLINE morphGG #-}
 
@@ -122,8 +130,8 @@ morphGG morph msf =
 -- | Well-formed looped connection of an output component as a future input.
 feedback :: Monad m => c -> MSF m (a, c) (b, c) -> MSF m a b
 feedback c sf = MSF $ \a -> do
-  ((b', c'), sf') <- unMSF sf (a, c)
-  return (b', feedback c' sf')
+  StrictTuple (!b', !c') sf' <- unMSF sf (a, c)
+  return $ StrictTuple b' $ feedback c' sf'
 
 -- * Execution/simulation
 
@@ -143,12 +151,12 @@ feedback c sf = MSF $ \a -> do
 embed :: Monad m => MSF m a b -> [a] -> m [b]
 embed _  []     = return []
 embed sf (a:as) = do
-  (b, sf') <- unMSF sf a
+  StrictTuple b sf' <- unMSF sf a
   bs       <- embed sf' as
   return (b:bs)
 
 -- | Run an 'MSF' indefinitely passing a unit-carrying input stream.
 reactimate :: Monad m => MSF m () () -> m ()
 reactimate sf = do
-  (_, sf') <- unMSF sf ()
+  StrictTuple () sf' <- unMSF sf ()
   reactimate sf'

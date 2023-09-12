@@ -19,12 +19,12 @@ import Control.Monad.Fix (MonadFix)
 
 -- Internal imports
 import Data.MonadicStreamFunction.Core         ()
-import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF))
+import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF), StrictTuple (..))
 
 -- | 'ArrowLoop' instance for MSFs. The monad must be an instance of
 -- 'MonadFix'.
 instance MonadFix m => ArrowLoop (MSF m) where
   loop :: MSF m (b, d) (c, d) -> MSF m b c
   loop sf = MSF $ \a -> do
-              rec ((b, c), sf') <- unMSF sf (a, c)
-              return (b, loop sf')
+              rec StrictTuple (b, c) sf' <- unMSF sf (a, c)
+              return $ StrictTuple b $ loop sf'
