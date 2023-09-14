@@ -59,7 +59,7 @@ import Data.MonadicStreamFunction.Util         (MStream)
 concatS :: Monad m => MStream m [b] -> MStream m b
 concatS msf = MSF $ \_ -> tick msf []
   where
-    tick msf' (b:bs) = return $ StrictTuple b $ MSF $ \_ -> tick msf' bs
+    tick msf' (b:bs) = return $! StrictTuple b $ MSF $ \_ -> tick msf' bs
     tick msf' []     = do
       StrictTuple bs msf'' <- unMSF msf' ()
       tick msf'' bs

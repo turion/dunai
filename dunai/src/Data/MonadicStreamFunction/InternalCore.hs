@@ -69,13 +69,15 @@ instance Monad m => Category (MSF m) where
   id = continuation
     where
       continuation = MSF $ \output -> return (StrictTuple output continuation)
+  {-# INLINE id #-}
 
   sf2 . sf1 = MSF $ \a -> do
     StrictTuple b sf1' <- unMSF sf1 a
     StrictTuple c sf2' <- unMSF sf2 b
     let continuation = sf2' . sf1'
         !result = StrictTuple c continuation
-    return result
+    return $! result
+  {-# INLINE (.) #-}
 
 -- * Monadic computations and 'MSF's
 
@@ -101,12 +103,14 @@ morphGS :: (Functor m1, Functor m2)
         -> MSF m1 a1 b1
         -> MSF m2 a2 b2
 morphGS morph = morphGS' $ \transition a2 c -> morph (`transition` c) a2
+{-# INLINE morphGS #-}
 
 morphGS' :: (Functor m1, Functor m2)
         => (forall c . (a1 -> c -> m1 (StrictTuple b1 c)) -> (a2 -> c -> m2 (StrictTuple b2 c)))
         -> MSF m1 a1 b1
         -> MSF m2 a2 b2
 morphGS' morph = morphGG $ \c0 -> StrictTuple (Identity c0) . (\f a c -> fmap Identity <$> morph f a (runIdentity c))
+{-# INLINE morphGS' #-}
 
 data StrictTuple a b = StrictTuple !a !b
   deriving Functor
@@ -131,7 +135,8 @@ morphGG morph msf =
 feedback :: Monad m => c -> MSF m (a, c) (b, c) -> MSF m a b
 feedback c sf = MSF $ \a -> do
   StrictTuple (!b', !c') sf' <- unMSF sf (a, c)
-  return $ StrictTuple b' $ feedback c' sf'
+  return $! StrictTuple b' $! feedback c' sf'
+{-# INLINE feedback #-}
 
 -- * Execution/simulation
 

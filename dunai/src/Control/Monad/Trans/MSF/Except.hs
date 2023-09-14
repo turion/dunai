@@ -194,7 +194,7 @@ handleExceptT msf f = flip handleGen msf $ \a mbcont -> do
   ebcont <- lift $ runExceptT mbcont
   case ebcont of
     Left e          -> unMSF (f e) a
-    Right (StrictTuple b msf') -> return $ StrictTuple b $ handleExceptT msf' f
+    Right (StrictTuple b msf') -> return $! StrictTuple b $ handleExceptT msf' f
 
 -- | If no exception can occur, the 'MSF' can be executed without the 'ExceptT'
 -- layer.
@@ -306,9 +306,9 @@ transG transformInput transformOutput msf = go
            case msf' of
              Just msf'' ->
               -- FIXME Am I reintroducing lazyness here?
-              return $ StrictTuple b2 $ transG transformInput transformOutput msf''
+              return $! StrictTuple b2 $ transG transformInput transformOutput msf''
              Nothing ->
-              return $ StrictTuple b2 go
+              return $! StrictTuple b2 go
 
 -- | Use a generic handler to handle exceptions in MSF processing actions.
 handleGen :: (a -> m1 (StrictTuple b1 (MSF m1 a b1)) -> m2 (StrictTuple b2 (MSF m2 a b2)))

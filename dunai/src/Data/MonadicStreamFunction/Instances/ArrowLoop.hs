@@ -27,4 +27,4 @@ instance MonadFix m => ArrowLoop (MSF m) where
   loop :: MSF m (b, d) (c, d) -> MSF m b c
   loop sf = MSF $ \a -> do
               rec StrictTuple (b, c) sf' <- unMSF sf (a, c)
-              return $ StrictTuple b $ loop sf'
+              return $! StrictTuple b $ loop sf'

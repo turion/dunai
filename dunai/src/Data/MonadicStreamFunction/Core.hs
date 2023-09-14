@@ -88,6 +88,7 @@ import Data.MonadicStreamFunction.InternalCore (MSF (..), embed, feedback, morph
 -- | 'Arrow' instance for 'MSF's.
 instance Monad m => Arrow (MSF m) where
   arr f = arrM (return . f)
+  {-# INLINE arr #-}
 
   first =
     -- This implementation is equivalent to:
@@ -96,26 +97,31 @@ instance Monad m => Arrow (MSF m) where
     --   b `seq` return ((b, c), first sf')
     morphGS $ \f (a, c) -> do
       StrictTuple b msf' <- f a
-      return $ StrictTuple (b, c) msf'
+      return $! StrictTuple (b, c) msf'
+  {-# INLINE first #-}
 
 -- * Functor and applicative instances
 
 -- | 'Functor' instance for 'MSF's.
 instance Monad m => Functor (MSF m a) where
   fmap f msf = msf >>> arr f
+  {-# INLINE fmap #-}
 
 -- | 'Applicative' instance for 'MSF's.
 instance (Functor m, Monad m) => Applicative (MSF m a) where
   -- It is possible to define this instance with only Applicative m
   pure = arr . const
+  {-# INLINE pure #-}
 
   fs <*> bs = (fs &&& bs) >>> arr (uncurry ($))
+  {-# INLINE (<*>) #-}
 
 -- ** Lifting point-wise computations
 
 -- | Lifts a monadic computation into a Stream.
 constM :: Monad m => m b -> MSF m a b
 constM = arrM . const
+{-# INLINE constM #-}
 
 -- | Apply a monadic transformation to every element of the input stream.
 --
@@ -127,12 +133,14 @@ arrM f =
     where
       go = MSF $ \a -> do
              !b <- f a
-             return $ StrictTuple b go
+             return $! StrictTuple b go
   -- morphGS (\i a -> i a >>= \(_, c) -> f a >>= \b -> return (b, c)) C.id
+{-# INLINE arrM #-}
 
 -- | Monadic lifting from one monad into another
 liftBaseM :: (Monad m2, MonadBase m1 m2) => (a -> m1 b) -> MSF m2 a b
 liftBaseM = arrM . (liftBase .)
+{-# INLINE liftBaseM #-}
 
 -- ** MSF combinators that apply monad transformations
 
@@ -140,6 +148,7 @@ liftBaseM = arrM . (liftBase .)
 -- 'liftIO').
 liftBaseS :: (Monad m2, MonadBase m1 m2) => MSF m1 a b -> MSF m2 a b
 liftBaseS = morphS liftBase
+{-# INLINE liftBaseS #-}
 
 -- *** MonadBase
 
@@ -160,6 +169,7 @@ liftTransS :: (MonadTrans t, Monad m, Monad (t m))
            => MSF m a b
            -> MSF (t m) a b
 liftTransS = morphS lift
+{-# INLINE liftTransS #-}
 
 -- *** Generic monadic transformation
 
@@ -188,3 +198,4 @@ morphS morph = morphGS morph'
     --
     --  morph' :: (forall c . (a -> m1 (b, c)) -> (a -> m2 (b, c)))
     morph' m1F = morph . m1F
+{-# INLINE morphS #-}

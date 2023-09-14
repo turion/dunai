@@ -21,7 +21,7 @@ import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF), StrictTuple (.
 msf1 *|* msf2 = MSF $ \(a, c) -> do
   StrictTuple b msf1' <- unMSF msf1 a
   StrictTuple d msf2' <- unMSF msf2 c
-  b `par` d `pseq` return $ StrictTuple (b, d) $ msf1' *|* msf2'
+  b `par` d `pseq` return $! StrictTuple (b, d) $ msf1' *|* msf2'
 
 -- | Parallel version of '&&&'.
 (&|&) :: Monad m => MSF m a b -> MSF m a c -> MSF m a (b, c)

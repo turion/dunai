@@ -23,5 +23,5 @@ instance Monad m => ArrowChoice (MSF m) where
   left sf = MSF f
     where
       f (Left a) = do StrictTuple b sf' <- unMSF sf a
-                      return $ StrictTuple (Left b) (left sf')
-      f (Right c) = return $ StrictTuple (Right c) (left sf)
+                      return $! StrictTuple (Left b) (left sf')
+      f (Right c) = return $! StrictTuple (Right c) (left sf)
