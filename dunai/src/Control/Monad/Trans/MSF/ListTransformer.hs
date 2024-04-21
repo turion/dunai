@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 -- The following warning id disabled so that we do not see warnings during
 -- compilation caused by the intentional use of ListT.
@@ -66,8 +67,8 @@ widthFirst msf = widthFirst' [msf]
 sequenceS :: Monad m => [MSF m a b] -> MSF (ListT m) a b
 sequenceS msfs = MSF $ \a -> sequence' $ apply a <$> msfs
   where
-    sequence' :: Monad m => [m a] -> ListT m a
-    sequence' xs = ListT $ (next . select) =<< sequence xs
+    sequence' :: forall m a . Monad m => [m a] -> ListT m a
+    sequence' xs = ListT $ next <$> select =<< sequence xs
 
     apply :: Monad m => a -> MSF m a b -> m (b, MSF (ListT m) a b)
     apply a msf = do
