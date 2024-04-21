@@ -103,6 +103,7 @@ library
     Control.Monad.Trans.MSF
     Control.Monad.Trans.MSF.Except
     Control.Monad.Trans.MSF.List
+    Control.Monad.Trans.MSF.ListTransformer
     Control.Monad.Trans.MSF.Maybe
     Control.Monad.Trans.MSF.Random
     Control.Monad.Trans.MSF.Reader
@@ -131,6 +132,7 @@ library
     , simple-affine-space >= 0.2 && < 0.3
     , transformers        >= 0.3 && < 0.6
     , transformers-base   >= 0.4 && < 0.5
+    , list-transformer    >= 1.1 && < 1.2
 
   default-language:
     Haskell2010
