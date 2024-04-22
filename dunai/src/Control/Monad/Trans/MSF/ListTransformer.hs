@@ -5,6 +5,7 @@
 {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 #else
 {-# OPTIONS_GHC -Wno-deprecations #-}
+{-# LANGUAGE LambdaCase #-}
 #endif
 -- |
 -- Copyright  : (c) Ivan Perez and Manuel Baerenz, 2016
@@ -36,11 +37,14 @@ module Control.Monad.Trans.MSF.ListTransformer
 import Control.Applicative ((<$>))
 #endif
 
-import Control.Monad    (sequence)
-import List.Transformer (ListT (ListT, next), Step (..), fold, select)
+import List.Transformer (ListT (ListT, next), Step (..), fold, select, unfold, MFunctor (hoist), MonadTrans (lift))
 
 -- Internal imports
 import Data.MonadicStreamFunction.InternalCore (MSF (MSF, unMSF))
+import Control.Applicative (Alternative (..))
+import Data.Foldable (Foldable(foldl'))
+import Data.MonadicStreamFunction.Core (liftTransS)
+import Data.MonadicStreamFunction.Instances.ArrowPlus ()
 
 -- * List monad
 
@@ -64,15 +68,7 @@ widthFirst msf = widthFirst' [msf]
 -- | Build an 'MSF' in the 'ListT' transformer by broadcasting the input stream
 -- value to each MSF in a given list.
 sequenceS :: Monad m => [MSF m a b] -> MSF (ListT m) a b
-sequenceS msfs = MSF $ \a -> sequence' $ apply a <$> msfs
-  where
-    sequence' :: Monad m => [m a] -> ListT m a
-    sequence' xs = ListT $ next <$> select =<< sequence xs
-
-    apply :: Monad m => a -> MSF m a b -> m (b, MSF (ListT m) a b)
-    apply a msf = do
-      (b, msf') <- unMSF msf a
-      return (b, sequenceS [msf'])
+sequenceS = foldl' (<|>) empty . fmap liftTransS
 
 -- | Apply an 'MSF' to every input.
 mapMSF :: Monad m => MSF m a b -> MSF m [a] [b]
